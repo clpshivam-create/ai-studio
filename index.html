@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private AI Studio</title>
+    <style>
+        :root {
+            --bg-color: #080808; 
+            --panel-bg: #121212; 
+            --glass-bg: rgba(30, 30, 30, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --text-main: #f0f0f0;
+            --text-muted: #888; 
+            --accent: #bb86fc; 
+            --accent-glow: #9b51e0; 
+            --danger: #ff4b4b; 
+            --heart-active: #ff4b4b; 
+            --star-active: #f1c40f; 
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: transparent; color: var(--text-main); margin: 0; padding: 0; display: flex; justify-content: center; }
+        
+        .container { width: 100%; background: radial-gradient(circle at top center, #1a1a1a 0%, var(--bg-color) 100%); padding: 2rem; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; padding: 1rem; flex-wrap: wrap; background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: 0 4px 30px rgba(0,0,0,0.2); }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.1rem; font-weight: bold; cursor: pointer; padding: 0.6rem 1.2rem; border-radius: 10px; transition: all 0.3s ease; }
+        .nav-btn.active { background: linear-gradient(135deg, rgba(187, 134, 252, 0.2), rgba(155, 81, 224, 0.1)); color: var(--accent); border: 1px solid rgba(187, 134, 252, 0.3); box-shadow: 0 0 15px rgba(187, 134, 252, 0.1); }
+        .nav-btn:hover:not(.active) { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .view { display: none; flex: 1; flex-direction: column; }
+        .view.active { display: flex; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        h2 { border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-top: 1rem; color: var(--text-main); font-weight: 600; letter-spacing: 0.5px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; }
+        .limit-tracker { font-size: 0.9rem; color: var(--accent); font-weight: normal; }
+        .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .card { background: linear-gradient(145deg, #181818, #121212); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem 1.5rem 3rem 1.5rem; position: relative; cursor: pointer; transition: all 0.3s ease; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .card:hover { transform: translateY(-8px); border-color: rgba(187, 134, 252, 0.4); box-shadow: 0 15px 35px rgba(187, 134, 252, 0.15); }
+        .card-header { display: flex; align-items: center; margin-bottom: 1rem; }
+        .avatar { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin-right: 1rem; border: 2px solid transparent; background: var(--panel-bg); background-image: linear-gradient(var(--panel-bg), var(--panel-bg)), linear-gradient(135deg, var(--accent), var(--accent-glow)); background-origin: border-box; background-clip: content-box, border-box; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-weight: bold; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .card-header h3 { margin: 0; color: var(--text-main); font-size: 1.2rem; padding-right: 10px; word-break: break-word;}
+        .card p { margin: 0; font-size: 0.95rem; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;}
+        .chat-card { padding-bottom: 1.5rem; }
+        .chat-preview { font-style: italic; color: #ccc; margin-bottom: 1.2rem !important; }
+        .heart-btn { position: absolute; bottom: 1rem; right: 1.2rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #444; transition: 0.3s; padding: 0; }
+        .heart-btn:hover { transform: scale(1.2); color: var(--danger); }
+        .heart-btn.active { color: var(--heart-active); text-shadow: 0 0 15px rgba(255, 75, 75, 0.6); }
+        .action-group { position: absolute; bottom: 1rem; right: 1rem; display: flex; gap: 0.5rem; }
+        .action-btn { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; cursor: pointer; padding: 0.4rem; font-size: 1rem; transition: 0.2s; color: var(--text-muted); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); border-color: rgba(255,255,255,0.2); }
+        
+        .premium-panel { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.6rem; font-weight: 600; color: var(--accent); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;}
+        input[type="text"], textarea, input[type="file"] { width: 100%; padding: 1rem; background-color: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-main); font-family: inherit; box-sizing: border-box; transition: all 0.3s ease; font-size: 1rem; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+        input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px rgba(187, 134, 252, 0.2), inset 0 2px 5px rgba(0,0,0,0.5); }
+        input[type="file"] { padding: 0.8rem; }
+        input[type="file"]::file-selector-button { background: linear-gradient(135deg, #333, #222); color: var(--text-main); border: 1px solid #444; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; margin-right: 1rem; transition: 0.3s; }
+        input[type="file"]::file-selector-button:hover { background: #444; }
+        textarea { resize: vertical; }
+        .counter { text-align: right; font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem; }
+        .counter.limit-reached { color: var(--danger); font-weight: bold; }
+        
+        .btn { background: linear-gradient(135deg, var(--accent), var(--accent-glow)); color: #fff; border: none; padding: 1rem 2rem; font-size: 1.1rem; font-weight: bold; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(187, 134, 252, 0.3); text-transform: uppercase; letter-spacing: 1px; }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(187, 134, 252, 0.5); filter: brightness(1.1); }
+        .btn:active { transform: translateY(1px); box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-small { padding: 0.6rem 1.2rem; font-size: 0.9rem; margin-top: auto; border-radius: 8px; }
+        
+        /* --- PREMIUM CHAT ROOM UI --- */
+        .chat-room-header { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; margin-bottom: 1.5rem; backdrop-filter: blur(12px); box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        
+        .chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.8rem; padding-right: 1rem; margin-bottom: 90px; }
+        
+        .msg-wrapper { display: flex; max-width: 85%; gap: 1rem; align-items: flex-end; animation: fadeIn 0.3s ease; }
+        .msg-wrapper.user { align-self: flex-end; flex-direction: row-reverse; }
+        .msg-wrapper.bot { align-self: flex-start; }
+        .msg-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; background: var(--panel-bg); background-image: linear-gradient(var(--panel-bg), var(--panel-bg)), linear-gradient(135deg, var(--accent), var(--accent-glow)); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; color: var(--text-muted); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .msg-content-area { display: flex; flex-direction: column; gap: 0.3rem; max-width: 100%; }
+        
+        .msg-bubble { padding: 1.2rem; border-radius: 20px; line-height: 1.6; word-wrap: break-word; box-shadow: 0 6px 20px rgba(0,0,0,0.2); font-size: 1rem; white-space: pre-wrap; }
+        .msg-wrapper.user .msg-bubble { background: linear-gradient(135deg, var(--accent), var(--accent-glow)); color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 6px 20px rgba(187, 134, 252, 0.25); }
+        .msg-wrapper.bot .msg-bubble { background: var(--glass-bg); backdrop-filter: blur(10px); color: var(--text-main); border: 1px solid var(--glass-border); border-bottom-left-radius: 4px; }
+        
+        /* PREMIUM RESPONSE SWIPER */
+        .response-swiper { display: flex; align-items: center; gap: 10px; margin-top: 5px; padding-left: 10px; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; }
+        .swipe-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 4px 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .swipe-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+        
+        /* PREMIUM 3-DOTS MENU */
+        .msg-options-wrapper { position: relative; display: inline-block; margin-top: 2px; }
+        .msg-options-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; padding: 0 0.5rem; opacity: 0; transition: opacity 0.2s; }
+        .msg-wrapper:hover .msg-options-btn { opacity: 1; }
+        .bot-actions-menu { 
+            position: absolute; top: 100%; left: 0; background: var(--panel-bg); border: 1px solid var(--glass-border); 
+            border-radius: 12px; padding: 0.5rem 0; box-shadow: 0 8px 25px rgba(0,0,0,0.4); 
+            display: none; flex-direction: column; min-width: 140px; z-index: 10;
+        }
+        .msg-wrapper.user .bot-actions-menu { left: auto; right: 0; }
+        .msg-options-wrapper:hover .bot-actions-menu { display: flex; animation: fadeIn 0.2s ease; }
+        .bot-actions-menu button { background: none; border: none; color: var(--text-main); padding: 0.6rem 1rem; text-align: left; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; gap: 0.5rem; align-items: center;}
+        .bot-actions-menu button:hover { background: rgba(255,255,255,0.05); color: var(--accent); }
+        .bot-actions-menu button.danger:hover { color: var(--danger); }
+
+        .chat-input-area { display: flex; gap: 1rem; align-items: flex-end; background: var(--glass-bg); padding: 1rem; border-radius: 24px; border: 1px solid var(--glass-border); box-shadow: 0 -5px 30px rgba(0,0,0,0.3); backdrop-filter: blur(15px); }
+        .chat-input-area textarea { flex: 1; resize: none; min-height: 24px; max-height: 150px; border: none; background: transparent; color: var(--text-main); padding: 0.6rem 0.5rem; outline: none; font-size: 1.05rem; font-family: inherit; line-height: 1.5; }
+        .chat-input-area textarea::placeholder { color: #777; }
+        .chat-input-area .btn { border-radius: 50%; width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 2px; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; border: 2px solid var(--bg-color); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(187, 134, 252, 0.5); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav" id="mainNav">
+        <button class="nav-btn active" onclick="switchView('library')" id="nav-library">Library</button>
+        <button class="nav-btn" onclick="switchView('chats')" id="nav-chats">My Chats</button>
+        <button class="nav-btn" onclick="switchView('create')" id="nav-create">+ Create Character</button>
+        <button class="nav-btn" onclick="switchView('profile')" id="nav-profile">My Profile</button>
+    </div>
+
+    <div id="libraryView" class="view active"><div class="char-grid" id="mainLibraryList"></div></div>
+    <div id="chatsView" class="view"><div class="section-header"><h2>Recent Roleplays</h2></div><div class="char-grid" id="activeChatsList"></div></div>
+
+    <div id="chatRoomView" class="view">
+        <div class="chat-room-header">
+            <button class="btn btn-small" style="background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--glass-border); box-shadow: none;" onclick="switchView('chats')">← Back</button>
+            <div class="avatar" id="activeChatAvatar" style="width: 45px; height: 45px; margin-right: 0.5rem; margin-left: 0.5rem;"></div>
+            <h3 style="margin: 0; font-weight: 600; letter-spacing: 0.5px;" id="activeChatName">Character Name</h3>
+        </div>
+        <div class="chat-history" id="chatHistoryBox"></div>
+        <div class="chat-input-area">
+            <textarea id="chatInputMessage" placeholder="Message the AI..." rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+            <button class="btn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <div id="createView" class="view">
+        <div class="premium-panel">
+            <div class="form-group"><label for="charAvatar">Character Avatar</label><input type="file" id="charAvatar" accept="image/png, image/jpeg, image/webp"></div>
+            <div class="form-group"><label for="charName">Character Name</label><input type="text" id="charName" placeholder="e.g., The Tavern Keeper"></div>
+            <div class="form-group"><label for="charDescription">Short Description</label><input type="text" id="charDescription" placeholder="e.g., A grumpy but wise keeper of secrets..."><div id="descWordCounter" class="counter">0 / 20 Words</div></div>
+            <div class="form-group"><label for="charGreeting">Greeting Message</label><textarea id="charGreeting" rows="3" placeholder="The first message the AI will send..."></textarea></div>
+            <div class="form-group"><label for="charDefinition">Advanced Character Definition</label><textarea id="charDefinition" rows="10" placeholder="Personality, scenario, and example dialogues..."></textarea><div id="defCounter" class="counter">0 / 40,000</div></div>
+            <button class="btn" id="saveCharBtn" style="width: 100%" onclick="saveCharacter()">Save Character</button>
+        </div>
+    </div>
+
+    <div id="profileView" class="view">
+        <div class="section-header"><h2>My Personas <span class="limit-tracker" id="personaLimitText">(0/10)</span></h2></div>
+        <div class="premium-panel" style="margin-bottom: 2rem;">
+            <div class="form-group" style="margin-bottom: 1.2rem;"><label>Persona Avatar</label><input type="file" id="newPersonaAvatar" accept="image/png, image/jpeg, image/webp"></div>
+            <div class="form-group" style="margin-bottom: 1.2rem;"><input type="text" id="personaName" placeholder="Persona Name (e.g., John the Mechanic)"></div>
+            <div class="form-group" style="margin-bottom: 1.2rem;"><textarea id="personaDetails" rows="2" placeholder="Your 1K character description..."></textarea><div id="personaCounter" class="counter">0 / 1,000</div></div>
+            <button class="btn btn-small" id="savePersonaBtn" style="width: 100%;" onclick="savePersona()">+ Add Persona</button>
+        </div>
+        <div class="char-grid" id="personaList"></div>
+        <h2>Favorite Characters</h2><div class="char-grid" id="favoriteList"></div>
+        <h2>My Characters</h2><div class="char-grid" id="myCharacterList"></div>
+    </div>
+</div>
+
+<script>
+    // PASTE YOUR BRAND NEW DEPLOYMENT URL HERE
+    const API_URL = "https://script.google.com/macros/s/AKfycbx07SeaRD6ibLn--3RBS5WtwIHTb9GQKwdB5zFn0VOk_ptgB4U8P41aU7CoeNhDPexe/exec";
+
+    function parseMarkdown(text) {
+        if(!text) return "";
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        text = text.replace(/---/g, '<hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 1rem 0;">');
+        return text;
+    }
+
+    let editingCharId = null; 
+    let editingPersonaId = null;
+    let currentActiveChatId = null; 
+
+    function setupCounter(inputId, counterId, maxLimit) {
+        const inputEl = document.getElementById(inputId);
+        const counterEl = document.getElementById(counterId);
+        inputEl.addEventListener('input', () => {
+            let len = inputEl.value.length;
+            if (len > maxLimit) { inputEl.value = inputEl.value.substring(0, maxLimit); len = maxLimit; }
+            counterEl.innerText = `${len.toLocaleString()} / ${maxLimit.toLocaleString()}`;
+            counterEl.classList.toggle('limit-reached', len >= maxLimit);
+        });
+    }
+    setupCounter('charDefinition', 'defCounter', 40000);
+    setupCounter('personaDetails', 'personaCounter', 1000);
+
+    function setupWordCounter(inputId, counterId, maxWords) {
+        const inputEl = document.getElementById(inputId);
+        const counterEl = document.getElementById(counterId);
+        inputEl.addEventListener('input', () => {
+            let words = inputEl.value.trim().split(/\s+/).filter(w => w.length > 0);
+            if (words.length > maxWords) { inputEl.value = words.slice(0, maxWords).join(" "); words = inputEl.value.split(/\s+/); }
+            counterEl.innerText = `${words.length} / ${maxWords} Words`;
+            counterEl.classList.toggle('limit-reached', words.length >= maxWords);
+        });
+    }
+    setupWordCounter('charDescription', 'descWordCounter', 20);
+
+    function switchView(viewName) {
+        ['library', 'chats', 'create', 'profile', 'chatRoom'].forEach(v => {
+            let viewEl = document.getElementById(v + 'View');
+            let navEl = document.getElementById('nav-' + v);
+            if(viewEl) viewEl.classList.remove('active');
+            if(navEl) navEl.classList.remove('active');
+        });
+        document.getElementById(viewName + 'View').classList.add('active');
+        if(viewName === 'chatRoom') { document.getElementById('mainNav').style.display = 'none'; } 
+        else { document.getElementById('mainNav').style.display = 'flex'; document.getElementById('nav-' + viewName).classList.add('active'); }
+        if (viewName === 'create' && editingCharId === null) resetCharacterForm();
+        if (viewName === 'library') fetchLibraryFromCloud();
+        if (viewName === 'chats') loadChats();
+        if (viewName === 'profile') loadProfile();
+    }
+
+    function processImage(inputId) {
+        return new Promise((resolve) => {
+            const file = document.getElementById(inputId).files[0];
+            if (!file) return resolve(null);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = Math.min(img.width, img.height);
+                    canvas.width = 150; canvas.height = 150;
+                    ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 150, 150);
+                    resolve(canvas.toDataURL('image/jpeg', 0.5)); 
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function resetCharacterForm() {
+        document.getElementById('charName').value = '';
+        document.getElementById('charDescription').value = '';
+        document.getElementById('charGreeting').value = '';
+        document.getElementById('charDefinition').value = '';
+        document.getElementById('charAvatar').value = '';
+        document.getElementById('descWordCounter').innerText = '0 / 20 Words';
+        document.getElementById('defCounter').innerText = '0 / 40,000';
+        document.getElementById('saveCharBtn').innerText = 'Save Character';
+        editingCharId = null;
+    }
+
+    async function fetchLibraryFromCloud() {
+        const grid = document.getElementById('mainLibraryList');
+        grid.innerHTML = '<p style="color: var(--accent); grid-column: 1/-1; text-align: center; padding: 3rem; font-style: italic; background: var(--glass-bg); border-radius: 12px; backdrop-filter: blur(10px);">Syncing with cloud... ☁️</p>';
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            localStorage.setItem('cloudCharacters', JSON.stringify(data));
+            renderGrid('mainLibraryList', data, 'character');
+        } catch (error) {
+            console.error("Cloud fetch failed.", error);
+            const cachedData = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+            renderGrid('mainLibraryList', cachedData, 'character');
+        }
+    }
+    
+    // Background sync that doesn't clear the screen
+    async function fetchLibraryFromCloudQuietly() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            localStorage.setItem('cloudCharacters', JSON.stringify(data));
+            if (document.getElementById('profileView').classList.contains('active')) loadProfile();
+        } catch (error) { console.error("Quiet sync failed."); }
+    }
+
+    async function saveCharacter() {
+        const name = document.getElementById('charName').value;
+        const desc = document.getElementById('charDescription').value;
+        const greeting = document.getElementById('charGreeting').value;
+        const def = document.getElementById('charDefinition').value;
+        if (!name || !def) return alert("Name and Definition are required!");
+        const btn = document.getElementById('saveCharBtn');
+        btn.innerText = 'Saving to Cloud... ☁️';
+        btn.disabled = true;
+
+        const avatar = await processImage('charAvatar');
+        const isEditing = editingCharId !== null;
+        const newChar = {
+            id: isEditing ? editingCharId.toString() : Date.now().toString(),
+            name: name, description: desc, avatar: avatar || "",
+            greeting: greeting, definition: def,
+            favorite: false, author: "me" 
+        };
+
+        const actionType = isEditing ? "edit" : "save";
+
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: actionType, character: newChar })
+            });
+            alert(isEditing ? "Character Successfully Updated! ✏️" : "Character Successfully Saved to the Cloud! 🚀");
+            let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+            if (isEditing) {
+                let index = chars.findIndex(c => c.id.toString() === editingCharId.toString());
+                if (index > -1) {
+                    if (!avatar) newChar.avatar = chars[index].avatar; 
+                    chars[index] = newChar;
+                }
+            } else { chars.push(newChar); }
+            localStorage.setItem('cloudCharacters', JSON.stringify(chars));
+            resetCharacterForm(); 
+            switchView(isEditing ? 'profile' : 'library');
+        } catch (error) {
+            alert("Error saving character! " + error.message);
+        }
+        btn.innerText = 'Save Character';
+        btn.disabled = false;
+    }
+
+    function getLocalFavorites() { return JSON.parse(localStorage.getItem('localFavorites')) || []; }
+    
+    function toggleFavorite(event, id) {
+        event.stopPropagation(); 
+        let favs = getLocalFavorites();
+        if (favs.includes(id.toString())) { favs = favs.filter(f => f !== id.toString()); } else { favs.push(id.toString()); }
+        localStorage.setItem('localFavorites', JSON.stringify(favs));
+        const cachedData = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        if (document.getElementById('libraryView').classList.contains('active')) { renderGrid('mainLibraryList', cachedData, 'character'); }
+        if (document.getElementById('profileView').classList.contains('active')) { loadProfile(); }
+    }
+
+    async function deleteCharacter(event, id) {
+        event.stopPropagation();
+        if (!confirm("Are you sure you want to delete this character forever?")) return;
+        
+        // Optimistic UI deletion
+        let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        chars = chars.filter(c => c.id.toString() !== id.toString());
+        localStorage.setItem('cloudCharacters', JSON.stringify(chars));
+        loadProfile(); 
+        
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "delete", id: id.toString() })
+            });
+            // Background sync to ensure data matches sheets
+            fetchLibraryFromCloudQuietly();
+        } catch (error) { alert("Failed to delete from cloud. It might return on refresh."); }
+    }
+
+    function editCharacter(event, id) {
+        event.stopPropagation();
+        let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        let char = chars.find(c => c.id.toString() === id.toString());
+        if (!char) return;
+        editingCharId = char.id;
+        document.getElementById('charName').value = char.name;
+        document.getElementById('charDescription').value = char.description;
+        document.getElementById('charGreeting').value = char.greeting;
+        document.getElementById('charDefinition').value = char.definition;
+        document.getElementById('descWordCounter').innerText = `${char.description.split(/\s+/).filter(w=>w.length>0).length} / 20 Words`;
+        document.getElementById('defCounter').innerText = `${char.definition.length} / 40,000`;
+        document.getElementById('saveCharBtn').innerText = 'Update Character';
+        switchView('create');
+    }
+
+    /* -------------------------------------------------------------
+       PERSONA LOGIC: EDIT & DELETE
+       ------------------------------------------------------------- */
+    function editPersona(event, id) {
+        event.stopPropagation();
+        let personas = JSON.parse(localStorage.getItem('appPersonas')) || [];
+        let p = personas.find(p => p.id.toString() === id.toString());
+        if (!p) return;
+
+        editingPersonaId = p.id;
+        document.getElementById('personaName').value = p.name;
+        document.getElementById('personaDetails').value = p.details;
+        document.getElementById('personaCounter').innerText = `${p.details.length} / 1,000`;
+        
+        document.getElementById('profileView').scrollIntoView({behavior: 'smooth'});
+        document.getElementById('savePersonaBtn').innerText = 'Update Persona';
+    }
+
+    function deletePersona(event, id) {
+        event.stopPropagation();
+        if (!confirm("Are you sure you want to delete this persona?")) return;
+        let personas = JSON.parse(localStorage.getItem('appPersonas')) || [];
+        personas = personas.filter(p => p.id.toString() !== id.toString());
+        localStorage.setItem('appPersonas', JSON.stringify(personas));
+        loadProfile();
+    }
+
+    async function savePersona() {
+        let personas = JSON.parse(localStorage.getItem('appPersonas')) || [];
+        const name = document.getElementById('personaName').value;
+        const details = document.getElementById('personaDetails').value;
+        if (!name || !details) return alert("Name and details are required!");
+        
+        const avatar = await processImage('newPersonaAvatar');
+        
+        if (editingPersonaId) {
+            let idx = personas.findIndex(p => p.id.toString() === editingPersonaId.toString());
+            if (idx > -1) {
+                personas[idx].name = name;
+                personas[idx].details = details;
+                if(avatar) personas[idx].avatar = avatar;
+            }
+            editingPersonaId = null;
+            document.getElementById('savePersonaBtn').innerText = '+ Add Persona';
+        } else {
+            if (personas.length >= 10) return alert("Limit reached! You can only create 10 personas.");
+            personas.push({ id: Date.now(), name, avatar, details });
+        }
+        
+        localStorage.setItem('appPersonas', JSON.stringify(personas));
+        document.getElementById('personaName').value = ''; 
+        document.getElementById('personaDetails').value = ''; 
+        document.getElementById('newPersonaAvatar').value = ''; 
+        document.getElementById('personaCounter').innerText = '0 / 1,000';
+        loadProfile();
+    }
+
+    /* -------------------------------------------------------------
+       CHAT LOGIC
+       ------------------------------------------------------------- */
+    function startChat(charId, event) {
+        if (event && event.target.closest('button')) return;
+        charId = charId.toString();
+        let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        let char = chars.find(c => c.id.toString() === charId);
+        if (!char) return;
+
+        let activeChats = JSON.parse(localStorage.getItem('appChats')) || [];
+        let chatIndex = activeChats.findIndex(c => c.charId.toString() === charId);
+        if (chatIndex > -1) { let existingChat = activeChats.splice(chatIndex, 1)[0]; activeChats.unshift(existingChat); } 
+        else { activeChats.unshift({ charId: char.id.toString(), name: char.name, avatar: char.avatar, lastMessage: char.greeting || "Hello!" }); }
+        localStorage.setItem('appChats', JSON.stringify(activeChats));
+
+        currentActiveChatId = char.id.toString();
+        document.getElementById('activeChatName').innerText = char.name;
+        document.getElementById('activeChatAvatar').innerHTML = char.avatar ? `<img src="${char.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : char.name.charAt(0).toUpperCase();
+
+        let allMessages = JSON.parse(localStorage.getItem('appMessages')) || {};
+        if (!allMessages[currentActiveChatId]) {
+            allMessages[currentActiveChatId] = [{ id: Date.now(), role: 'bot', text: char.greeting || "Hello! How can I help you today?", alternatives: [char.greeting || "Hello! How can I help you today?"], activeIndex: 0 }];
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+        }
+        renderChatRoom(); switchView('chatRoom');
+    }
+
+    function changeResponse(idx, dir) {
+        let allMessages = JSON.parse(localStorage.getItem('appMessages'));
+        let msg = allMessages[currentActiveChatId][idx];
+        if(!msg.alternatives) return;
+        let total = msg.alternatives.length;
+        msg.activeIndex = ((msg.activeIndex || 0) + dir + total) % total;
+        localStorage.setItem('appMessages', JSON.stringify(allMessages));
+        renderChatRoom();
+    }
+
+    async function regenerateResponse(idx) {
+        let allMessages = JSON.parse(localStorage.getItem('appMessages'));
+        let msgs = allMessages[currentActiveChatId];
+        
+        let userPrompt = "";
+        for(let i = idx - 1; i >= 0; i--) {
+            if(msgs[i].role === 'user') {
+                userPrompt = msgs[i].alternatives ? msgs[i].alternatives[msgs[i].activeIndex || 0] : msgs[i].text;
+                break;
+            }
+        }
+
+        if(!msgs[idx].alternatives) { msgs[idx].alternatives = [msgs[idx].text]; msgs[idx].activeIndex = 0; }
+
+        msgs[idx].alternatives.push('<span style="font-style:italic; opacity:0.6;">Regenerating...</span>');
+        msgs[idx].activeIndex = msgs[idx].alternatives.length - 1;
+        msgs[idx].isTyping = true;
+        localStorage.setItem('appMessages', JSON.stringify(allMessages));
+        renderChatRoom();
+
+        let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        let char = chars.find(c => c.id.toString() === currentActiveChatId);
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "chat", message: userPrompt, definition: char.definition })
+            });
+            const data = await response.json();
+            
+            allMessages = JSON.parse(localStorage.getItem('appMessages'));
+            msgs = allMessages[currentActiveChatId];
+            msgs[idx].alternatives[msgs[idx].activeIndex] = data.reply;
+            msgs[idx].isTyping = false;
+            msgs[idx].text = data.reply; 
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+            renderChatRoom();
+        } catch (error) {
+            allMessages = JSON.parse(localStorage.getItem('appMessages'));
+            msgs = allMessages[currentActiveChatId];
+            msgs[idx].alternatives[msgs[idx].activeIndex] = "⚠️ Failed to regenerate.";
+            msgs[idx].isTyping = false;
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+            renderChatRoom();
+        }
+    }
+
+    function editUserMessage(idx) {
+        let allMessages = JSON.parse(localStorage.getItem('appMessages'));
+        let msg = allMessages[currentActiveChatId][idx];
+        let currentText = msg.alternatives ? msg.alternatives[msg.activeIndex || 0] : msg.text;
+        
+        let newText = prompt("Edit your message:", currentText);
+        if (newText !== null && newText.trim() !== "") {
+            if(!msg.alternatives) msg.alternatives = [msg.text];
+            msg.alternatives[msg.activeIndex || 0] = newText;
+            msg.text = newText;
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+            renderChatRoom();
+        }
+    }
+
+    function deleteUserMessage(idx) {
+        if(!confirm("Are you sure you want to delete this message?")) return;
+        let allMessages = JSON.parse(localStorage.getItem('appMessages'));
+        allMessages[currentActiveChatId].splice(idx, 1);
+        localStorage.setItem('appMessages', JSON.stringify(allMessages));
+        renderChatRoom();
+    }
+
+    function renderChatRoom() {
+        let allMessages = JSON.parse(localStorage.getItem('appMessages')) || {};
+        let messages = allMessages[currentActiveChatId] || [];
+        
+        let activeChats = JSON.parse(localStorage.getItem('appChats')) || [];
+        let currentChatInfo = activeChats.find(c => c.charId.toString() === currentActiveChatId);
+        let botAvatarHTML = currentChatInfo?.avatar ? `<img src="${currentChatInfo.avatar}" class="msg-avatar">` : `<div class="msg-avatar">${currentChatInfo?.name.charAt(0).toUpperCase() || 'A'}</div>`;
+
+        let box = document.getElementById('chatHistoryBox');
+        box.innerHTML = '';
+        
+        messages.forEach((msg, idx) => {
+            let contentText = msg.alternatives ? msg.alternatives[msg.activeIndex || 0] : msg.text;
+            let totalAlts = msg.alternatives ? msg.alternatives.length : 1;
+            let currentAlt = msg.alternatives ? (msg.activeIndex || 0) + 1 : 1;
+
+            if (msg.role === 'user') { 
+                box.innerHTML += `
+                    <div class="msg-wrapper user">
+                        <div class="msg-content-area">
+                            <div class="msg-bubble">${parseMarkdown(contentText)}</div>
+                            <div class="msg-options-wrapper" style="align-self: flex-end; margin-right: 5px;">
+                                <button class="msg-options-btn">⋮</button>
+                                <div class="bot-actions-menu">
+                                    <button onclick="editUserMessage(${idx})">✏️ Edit</button>
+                                    <button class="danger" onclick="deleteUserMessage(${idx})">🗑️ Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`; 
+            } else {
+                box.innerHTML += `
+                    <div class="msg-wrapper bot">
+                        ${botAvatarHTML}
+                        <div class="msg-content-area">
+                            <div class="msg-bubble">${parseMarkdown(contentText)}</div>
+                            ${!msg.isTyping ? `
+                            <div class="response-swiper">
+                                <button class="swipe-btn" onclick="changeResponse(${idx}, -1)">❮</button>
+                                <span>${currentAlt}/${totalAlts}</span>
+                                <button class="swipe-btn" onclick="changeResponse(${idx}, 1)">❯</button>
+                                <button class="swipe-btn" onclick="regenerateResponse(${idx})">🔄</button>
+                            </div>` : ''}
+                        </div>
+                    </div>`;
+            }
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const inputEl = document.getElementById('chatInputMessage');
+        const text = inputEl.value.trim();
+        if (!text || !currentActiveChatId) return;
+
+        let allMessages = JSON.parse(localStorage.getItem('appMessages')) || {};
+        allMessages[currentActiveChatId].push({ id: Date.now(), role: 'user', text: text, alternatives: [text], activeIndex: 0 });
+        
+        const typingId = "typing_" + Date.now();
+        allMessages[currentActiveChatId].push({ 
+            id: typingId, role: 'bot', 
+            text: '<span style="font-style:italic; opacity:0.6;">Typing...</span>', 
+            isTyping: true, 
+            alternatives: ['<span style="font-style:italic; opacity:0.6;">Typing...</span>'], 
+            activeIndex: 0 
+        });
+        
+        localStorage.setItem('appMessages', JSON.stringify(allMessages));
+        inputEl.value = ''; inputEl.style.height = ''; renderChatRoom();
+
+        let chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        let char = chars.find(c => c.id.toString() === currentActiveChatId);
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "chat", message: text, definition: char.definition })
+            });
+            const data = await response.json();
+            
+            allMessages = JSON.parse(localStorage.getItem('appMessages')) || {};
+            allMessages[currentActiveChatId] = allMessages[currentActiveChatId].filter(m => !m.isTyping);
+            allMessages[currentActiveChatId].push({ id: Date.now(), role: 'bot', text: data.reply, alternatives: [data.reply], activeIndex: 0 });
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+            renderChatRoom();
+        } catch (error) {
+            console.error("AI Error:", error);
+            allMessages = JSON.parse(localStorage.getItem('appMessages')) || {};
+            allMessages[currentActiveChatId] = allMessages[currentActiveChatId].filter(m => !m.isTyping);
+            localStorage.setItem('appMessages', JSON.stringify(allMessages));
+            renderChatRoom();
+            alert("The AI brain is having trouble connecting to Google Scripts.");
+        }
+    }
+
+    function createCardHTML(item, type, containerId) {
+        const avatarImg = item.avatar ? `<img src="${item.avatar}" class="avatar">` : `<div class="avatar">${item.name.charAt(0).toUpperCase()}</div>`;
+        if (type === 'persona') { 
+            // FIX: Added Edit and Delete buttons to Personas
+            return `<div class="card">
+                <div class="card-header">${avatarImg}<h3>${item.name}</h3></div>
+                <p>${item.details}</p>
+                <div class="action-group">
+                    <button class="action-btn" onclick="editPersona(event, '${item.id}')">✏️</button>
+                    <button class="action-btn" onclick="deletePersona(event, '${item.id}')" style="color: var(--danger);">🗑️</button>
+                </div>
+            </div>`; 
+        } else if (type === 'chat') {
+            return `<div class="card chat-card" onclick="startChat('${item.charId}', event)"><div class="card-header">${avatarImg}<h3>${item.name}</h3></div><p class="chat-preview">"${item.lastMessage}"</p><button class="btn btn-small" style="width: 100%;">Resume Roleplay</button></div>`;
+        } else if (type === 'my-character') {
+            return `<div class="card" onclick="startChat('${item.id}', event)">
+                <div class="card-header">${avatarImg}<div><h3>${item.name}</h3><div style="font-size: 0.85rem; color: var(--accent); font-style: italic; margin-top: 0.2rem;">${item.description || ""}</div></div></div>
+                <p>${item.greeting || "No greeting set."}</p>
+                <div class="action-group">
+                    <button class="action-btn" onclick="editCharacter(event, '${item.id}')">✏️</button>
+                    <button class="action-btn" onclick="deleteCharacter(event, '${item.id}')" style="color: var(--danger);">🗑️</button>
+                </div>
+            </div>`;
+        } else {
+            const favs = getLocalFavorites(); const isFav = favs.includes(item.id.toString());
+            const heart = isFav ? 'heart-btn active' : 'heart-btn'; const icon = isFav ? '♥' : '♡';
+            return `<div class="card" onclick="startChat('${item.id}', event)"><div class="card-header">${avatarImg}<div><h3>${item.name}</h3><div style="font-size: 0.85rem; color: var(--accent); font-style: italic; margin-top: 0.2rem;">${item.description || ""}</div></div></div><p>${item.greeting || "No greeting set."}</p><button class="${heart}" onclick="toggleFavorite(event, '${item.id}')">${icon}</button></div>`;
+        }
+    }
+
+    function renderGrid(containerId, dataArray, type = 'character') {
+        document.getElementById(containerId).innerHTML = dataArray.length === 0 ? `<p style="color: var(--text-muted); grid-column: 1/-1; background: var(--glass-bg); padding: 2rem; border-radius: 12px; text-align: center; border: 1px solid var(--glass-border);">Nothing here yet.</p>` : dataArray.map(item => createCardHTML(item, type, containerId)).join('');
+    }
+
+    function loadChats() { renderGrid('activeChatsList', JSON.parse(localStorage.getItem('appChats')) || [], 'chat'); }
+    
+    function loadProfile() {
+        const chars = JSON.parse(localStorage.getItem('cloudCharacters')) || [];
+        const personas = JSON.parse(localStorage.getItem('appPersonas')) || [];
+        const favIds = getLocalFavorites();
+        document.getElementById('personaLimitText').innerText = `(${personas.length}/10)`;
+        renderGrid('personaList', personas, 'persona');
+        renderGrid('favoriteList', chars.filter(c => favIds.includes(c.id.toString())), 'character');
+        renderGrid('myCharacterList', chars.filter(c => c.author === "me"), 'my-character'); 
+    }
+
+    fetchLibraryFromCloud();
+</script>
+</body>
+</html>
